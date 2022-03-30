@@ -6,4 +6,5 @@ if __name__=='__main__':
 
     util=util.Util()
     df=util.build_df(input_file)
+    df.to_csv('data/travel_cb.csv', encoding='utf-8')
     print(df.head())
