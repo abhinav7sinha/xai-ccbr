@@ -28,7 +28,7 @@ class Util():
                         i+=1
                     travel_cb_dict[case_key]=feature_list
         df = pd.DataFrame(travel_cb_dict.values(), columns = self.features.keys())
-        df.to_csv('data/travel_cb_orig.csv', encoding='utf-8')
+        df.to_csv('data/travel_cb_orig.csv', encoding='utf-8', index=False)
 
         self.holiday_types = {k: v for v, k in enumerate(sorted(df['HolidayType'].unique()))}
         self.regions={k: v for v, k in enumerate(sorted(df['Region'].unique()))}
@@ -42,7 +42,7 @@ class Util():
         for k,v in travel_cb_dict.items():
             travel_cb_dict_new[k]=self.standardize_feature_list(v)
         df = pd.DataFrame (travel_cb_dict_new.values(), columns = self.features.keys())
-        return df
+        return df.astype(int)
 
     def is_case_object(self, input_line)->bool:
         '''checks if input line is a case object'''

@@ -6,11 +6,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error
 from collections import OrderedDict
+import os
+
+os.system('cls' if os.name == 'nt' else 'clear')
 
 class ccbr():
     def __init__(self, input_file) -> None:
         self.util_obj=util.Util()
         self.orig_df=pd.read_csv('data/travel_cb_orig.csv', encoding='utf-8')
+        # print(f'{self.orig_df.iloc[id]}')
         self.df=self.util_obj.build_df(input_file)
         self.df.to_csv('data/travel_cb.csv', encoding='utf-8')
         
@@ -18,10 +22,13 @@ class ccbr():
             'HolidayType','NumberOfPersons','Region', 'Transportation', 'Duration', 'Season', 
             'Accommodation','Hotel'
         ]
+        self.feature_value_range=self.find_feature_value_range(self.predictors)
         xtrain, xtest, ytrain, ytest = train_test_split(self.df[self.predictors],self.df['Price'], 
                                                   random_state=42, 
                                                   test_size=0.20, shuffle=True)
         self.reg = LinearRegression().fit(xtrain, ytrain)
+        self.predictors_1=['NumberOfPersons', 'Duration', 'Season']
+        self.reg_1 = LinearRegression().fit(self.df[self.predictors_1], self.df['Price'])
         y_pred_train = self.reg.predict(xtrain)
         y_pred_test = self.reg.predict(xtest)
         coef= np.abs(self.reg.coef_)
@@ -30,10 +37,11 @@ class ccbr():
         score = list(coef/sum(coef))
         for i in range(len(self.predictors)):
             self.score_dict[self.predictors[i]] = score[i] 
-        self.score_dict = {k: v for k, v in sorted(self.score_dict.items(), key=lambda item: item[1],reverse=True)}
+        self.score_dict = {k: round(v,2) for k, v in sorted(self.score_dict.items(), key=lambda item: item[1],reverse=True)}
         self.running_feature_ranklist=list(self.score_dict.keys())
 
         self.nominal_features=['Region', 'Hotel']
+        self.ordinal_features=['NumberOfPersons', 'Duration', 'Season']
         self.f_q_map={
             'HolidayType':'What holiday type are you looking for? ',
             'NumberOfPersons':'How many people are there in the trip? ',
@@ -100,13 +108,48 @@ class ccbr():
         else:
             return input(self.f_q_map.get(selected_feature))
     
-    def get_similar_cases(self, user_pref, k=3):
-        # retrieve indices of 3 similar cases
-        ## just for testing
-        return np.random.randint(1,1471,3)
+    def get_similar_cases(self, user_pref, k=3, metric='euclidean'):
+        # retrieve indices of k similar cases
+        if metric=='euclidean':
+            euc_dist_arr=np.full(len(self.df), np.inf)
+            for count, val in enumerate(euc_dist_arr):
+                temp_similarity_arr=[0]*len(self.predictors)
+                for count_i, val_i in enumerate(self.predictors):
+                    temp_similarity_arr[count_i]=self.find_feature_similarity(val_i, user_pref.get(val_i), self.df.at[count,val_i])
+                euc_dist_arr[count]=np.linalg.norm(temp_similarity_arr)
+            return np.argsort(-euc_dist_arr)[:k]
+        else:
+            similarity_arr=np.full(len(self.df), 0)
+            for count, val in enumerate(similarity_arr):
+                temp_similarity_arr=[0]*len(self.predictors)
+                for count_i, val_i in enumerate(self.predictors):
+                    temp_similarity_arr[count_i]=self.find_feature_similarity(val_i, user_pref.get(val_i), self.df.at[count,val_i])
+                similarity_arr[count]=np.linalg.norm(temp_similarity_arr)
+            return np.argsort(similarity_arr)[:k]
+
+    def find_feature_similarity(self, feature_name, q_feature, c_feature):
+        if not q_feature:
+            return 0
+        elif feature_name not in self.ordinal_features:
+            return 1 if q_feature==c_feature else 0
+        elif feature_name=='Season':
+            if q_feature<c_feature:
+                s1=q_feature
+                s2=c_feature
+            else:
+                s1=c_feature
+                s2=q_feature
+            return 1-(min((s2-s1),(s1-s2+12))/self.feature_value_range.get(feature_name))
+        else:
+            return 1-(abs(q_feature-c_feature)/self.feature_value_range.get(feature_name))
+    
+    def find_feature_value_range(self, predictors):
+        feature_value_range={key: 0 for key in predictors}
+        for feature in predictors:
+            feature_value_range[feature]=self.df[feature].max()-self.df[feature].min()
+        return feature_value_range
 
     def check_case_with_user(self, best_case_ids):
-        # print the cases to the user
         for id in best_case_ids:
             print(f'{self.orig_df.iloc[id]}')
         is_final=input('Do you want to select a Journey? [y/n]')
@@ -139,14 +182,13 @@ class ccbr():
         elif feature=='Season':
             return nom_val-1
         else:
-            return nom_val
+            return int(nom_val)
     
     def adapt_case(self, user_pref):
         user_pref_list=[None]*len(self.predictors)
         for k,v in user_pref.items():
             user_pref_list[self.predictors.index(k)]=v
-        # return self.reg.predict([user_pref_list])
-        return 1000
+        return self.reg_1.predict([list(user_pref_list[i] for i in [1, 4, 5] )])[0]
 
 if __name__=='__main__':
     input_file='data/travel_cb.txt'
