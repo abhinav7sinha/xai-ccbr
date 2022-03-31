@@ -10,6 +10,7 @@ from collections import OrderedDict
 class ccbr():
     def __init__(self, input_file) -> None:
         self.util_obj=util.Util()
+        self.orig_df=pd.read_csv('data/travel_cb_orig.csv', encoding='utf-8')
         self.df=self.util_obj.build_df(input_file)
         self.df.to_csv('data/travel_cb.csv', encoding='utf-8')
         
@@ -42,6 +43,25 @@ class ccbr():
             'Season':'In which Season are planning the trip? ',
             'Accommodation':'What type of accomodation you want?',
             'Hotel':'Do you have any preference of Hotel?'
+        }
+    
+        self.f_q_map_detailed={
+            'HolidayType':('What holiday type are you looking for?\n'
+                'Choose 0 for Active\nChoose 1 for Bathing\nChoose 2 for City\n'
+                'Choose 3 for Education\nChoose 4 for Language\nChoose 5 for Recreation\n'
+                'Choose 6 for Skiing\nChoose 7 for Wandering\n'),
+            'NumberOfPersons':'How many people are there in the trip? ',
+            'Region':'Which region are you interested in travelling? ',
+            'Transportation':('What mode of transportation are you looking for?\n'
+                'Choose 0 for Car\nChoose 1 for Coach\nChoose 2 for Plane\n'
+                'Choose 3 for Train\n'),
+            'Duration':'What is the duration of the trip?\n',
+            'Season':('In which Season are planning the trip?\n'
+                'Choose 1 for January, 2 for February ... 12 for December\n'),
+            'Accommodation':('What type of accomodation you want?\n'
+                'Choose 0 for HolidayFlat\nChoose 1 for OneStar\nChoose 2 for TwoStars\n'
+                'Choose 3 for ThreeStars\nChoose 4 for FourStars\nChoose 5 for FiveStars\n'),
+            'Hotel':'Do you have any preference of Hotel?\n'
         }
         self.user_pref={'NumberOfPersons':3, 'Season':6}
 
@@ -76,7 +96,7 @@ class ccbr():
 
     def get_feature_val(self, selected_feature):
         if selected_feature not in self.nominal_features:
-            return int(input(self.f_q_map.get(selected_feature)))
+            return int(input(self.f_q_map_detailed.get(selected_feature)))
         else:
             return input(self.f_q_map.get(selected_feature))
     
@@ -88,7 +108,7 @@ class ccbr():
     def check_case_with_user(self, best_case_ids):
         # print the cases to the user
         for id in best_case_ids:
-            print(f'Package: {self.df.iloc[id]}')
+            print(f'{self.orig_df.iloc[id]}')
         is_final=input('Do you want to select a Journey? [y/n]')
         if is_final=='y':
             return True
@@ -99,11 +119,11 @@ class ccbr():
         if not price:
             selected_journey_id=int(input('Select Journey ID: '))
             final_price=self.df.iloc[selected_journey_id-1]['Price']
-            print(f'Package: {self.df.iloc[selected_journey_id-1]}')
+            print(f'{self.orig_df.iloc[selected_journey_id-1]}')
             print(f'Final price: {final_price}')
         else:
             # test code
-            print(f'Package: {self.df.iloc[np.random.randint(1,1471,1)]}')
+            print(f'{self.orig_df.iloc[np.random.randint(1,1471,1)]}')
             print(f'Final price: {price}')         
 
     def get_standard_feature_dict(self, feature_dict):
@@ -112,14 +132,14 @@ class ccbr():
         return feature_dict
 
     def convert_to_ordinal(self, feature, nom_val):
-        if feature=='HolidayType':
-            return self.util_obj.holiday_types.get(nom_val)
-        elif feature=='Region':
+        if feature=='Region':
             return self.util_obj.regions.get(nom_val)
-        elif feature=='Transportation':
-            return self.util_obj.transportation_modes.get(nom_val)
         elif feature=='Hotel':
             return self.util_obj.hotels.get(nom_val)
+        elif feature=='Season':
+            return nom_val-1
+        else:
+            return nom_val
     
     def adapt_case(self, user_pref):
         user_pref_list=[None]*len(self.predictors)

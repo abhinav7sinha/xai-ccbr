@@ -27,8 +27,9 @@ class Util():
                         feature_list[feature_index]=feature_value
                         i+=1
                     travel_cb_dict[case_key]=feature_list
+        df = pd.DataFrame(travel_cb_dict.values(), columns = self.features.keys())
+        df.to_csv('data/travel_cb_orig.csv', encoding='utf-8')
 
-        df = pd.DataFrame (travel_cb_dict.values(), columns = self.features.keys())
         self.holiday_types = {k: v for v, k in enumerate(sorted(df['HolidayType'].unique()))}
         self.regions={k: v for v, k in enumerate(sorted(df['Region'].unique()))}
         self.transportation_modes={k: v for v, k in enumerate(sorted(df['Transportation'].unique()))}
