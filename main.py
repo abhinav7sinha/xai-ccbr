@@ -8,6 +8,11 @@ from sklearn.metrics import mean_squared_error
 from collections import OrderedDict
 import os
 
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
 os.system('cls' if os.name == 'nt' else 'clear')
 
 class ccbr():
@@ -39,7 +44,7 @@ class ccbr():
         score = list(coef/sum(coef))
         for i in range(len(self.predictors)):
             self.score_dict[self.predictors[i]] = score[i] 
-        self.score_dict = {k: round(v,2) for k, v in sorted(self.score_dict.items(), key=lambda item: item[1],reverse=True)}
+        self.score_dict = {k: v for k, v in sorted(self.score_dict.items(), key=lambda item: item[1],reverse=True)}
         self.running_feature_ranklist=list(self.score_dict.keys())
 
         self.nominal_features=['Region', 'Hotel']
@@ -50,44 +55,50 @@ class ccbr():
             'Region':'Which region are you interested in travelling? ',
             'Transportation':'What mode of transportation are you looking for? ',
             'Duration':'What is the duration of the trip? ',
-            'Season':'In which Season are planning the trip? ',
+            'Season':'In which Season are you planning the trip? ',
             'Accommodation':'What type of accomodation you want?',
             'Hotel':'Do you have any preference of Hotel?'
         }
     
         self.f_q_map_detailed={
             'HolidayType':('What holiday type are you looking for?\n'
-                'Choose 0 for Active\nChoose 1 for Bathing\nChoose 2 for City\n'
-                'Choose 3 for Education\nChoose 4 for Language\nChoose 5 for Recreation\n'
-                'Choose 6 for Skiing\nChoose 7 for Wandering\n'),
-            'NumberOfPersons':'How many people are there in the trip? ',
-            'Region':'Which region are you interested in travelling? ',
+                'Choose 1 for Active\nChoose 2 for Bathing\nChoose 3 for City\n'
+                'Choose 4 for Education\nChoose 5 for Language\nChoose 6 for Recreation\n'
+                'Choose 7 for Skiing\nChoose 8 for Wandering\n'),
+            'NumberOfPersons':'How many people are there in the trip? \n',
+            'Region':'Which region are you interested in travelling to? \n',
             'Transportation':('What mode of transportation are you looking for?\n'
-                'Choose 0 for Car\nChoose 1 for Coach\nChoose 2 for Plane\n'
-                'Choose 3 for Train\n'),
+                'Choose 1 for Car\nChoose 2 for Coach\nChoose 3 for Plane\n'
+                'Choose 4 for Train\n'),
             'Duration':'What is the duration of the trip?\n',
-            'Season':('In which Season are planning the trip?\n'
+            'Season':('In which Season are you planning the trip?\n'
                 'Choose 1 for January, 2 for February ... 12 for December\n'),
             'Accommodation':('What type of accomodation you want?\n'
-                'Choose 0 for HolidayFlat\nChoose 1 for OneStar\nChoose 2 for TwoStars\n'
-                'Choose 3 for ThreeStars\nChoose 4 for FourStars\nChoose 5 for FiveStars\n'),
+                'Choose 1 for HolidayFlat\nChoose 2 for OneStar\nChoose 3 for TwoStars\n'
+                'Choose 4 for ThreeStars\nChoose 5 for FourStars\nChoose 6 for FiveStars\n'),
             'Hotel':'Do you have any preference of Hotel?\n'
         }
         self.user_pref={}
 
     def start(self):
+        print('Welcome to Travel CBR system!')
+        print()
+        print('is_weighted: ', self.is_weighted)
+        print()
         while self.running_feature_ranklist:
             selected_feature=self.get_q_preference()
             selected_feature_val=self.get_feature_val(selected_feature)
-            self.user_pref[selected_feature]=selected_feature_val
+            self.user_pref[selected_feature]=self.convert_to_ordinal(selected_feature, selected_feature_val)
+            selected_feature_val
             print()
-            print('user preference: ')
+            print('User selection (running): ')
             print(self.user_pref)
             print()
-            self.user_pref=self.get_standard_feature_dict(self.user_pref)
+            # self.user_pref=self.get_standard_feature_dict(self.user_pref)
             best_case_ids, best_case_scores=self.get_similar_cases(
                 self.user_pref, metric=self.similarity_metric, weights=self.is_weighted
             )
+            best_case_scores=abs(best_case_scores)
             is_final=self.check_case_with_user(best_case_ids, best_case_scores)
             if is_final:
                 self.print_final_price()
@@ -95,12 +106,13 @@ class ccbr():
             else:
                 pass
         if not is_final:
-            print('user choices: ')
+            print('User selection (Final): ')
             print(self.user_pref)
+            print()
             self.print_final_price(self.adapt_case(self.user_pref))
         
     def get_q_preference(self):
-        q_scores=[self.score_dict.get(feature) for feature in self.running_feature_ranklist[:3]]
+        q_scores=[self.score_dict.get(feature) for feature in self.running_feature_ranklist][:3]
         q_scores/=sum(q_scores)
         for i in range(3):
             try:
@@ -112,7 +124,7 @@ class ccbr():
         while not selected_feature_id:
             try:
                 print()
-                temp=int(input('Select one of the above Qs (1, 2 or 3): '))
+                temp=int(input('Select one of the above Qs (1, 2 or 3): \n'))
                 if temp in range(1, len(self.running_feature_ranklist)+1):
                     selected_feature_id=temp
                 else:
@@ -121,7 +133,6 @@ class ccbr():
                 print('Select a valid Question number! Try again!')
         selected_feature_name=self.running_feature_ranklist[selected_feature_id-1]
         self.running_feature_ranklist.pop(selected_feature_id-1)
-        # self.update_feature_ranking(selected_feature_name)
         return selected_feature_name
 
     def get_feature_val(self, selected_feature):
@@ -135,7 +146,7 @@ class ccbr():
     def get_similar_cases(self, user_pref, k=3, metric='euclidean', weights=False):
         weights_arr=np.ones(len(self.predictors))/len(self.predictors)
         if weights:
-            weights_arr=np.asarray(list(self.score_dict.values()))/sum(self.score_dict.values())
+            weights_arr=np.asarray(list(self.score_dict.values()))
         # retrieve indices of k similar cases
         if metric=='euclidean':
             euc_dist_arr=np.full(len(self.df), np.inf).reshape(-1,1)
@@ -143,10 +154,12 @@ class ccbr():
                 temp_similarity_arr=[0]*len(self.predictors)
                 for count_i, val_i in enumerate(self.predictors):
                     temp_similarity_arr[count_i]=self.find_feature_similarity(val_i, user_pref.get(val_i), self.df.at[count,val_i])
-                    temp_similarity_arr[count_i]*=weights_arr[count_i]
+                    temp_similarity_arr[count_i]*=weights_arr
+                temp_similarity_arr=temp_similarity_arr
                 euc_dist_arr[count]=np.linalg.norm(temp_similarity_arr)
+            # TODO: fix this remove line
             euc_dist_arr=np.amax(euc_dist_arr, axis=1)
-            return np.argsort(-euc_dist_arr)[:k], np.sort(euc_dist_arr)[-k:]
+            return np.argsort(-euc_dist_arr)[:k], np.sort(-euc_dist_arr)[:k]
         else:
             similarity_arr=np.full(len(self.df), 0)
             for count, val in enumerate(similarity_arr):
@@ -165,13 +178,7 @@ class ccbr():
         elif feature_name not in self.ordinal_features:
             return 1 if q_feature==c_feature else 0
         elif feature_name=='Season':
-            if q_feature<c_feature:
-                s1=q_feature
-                s2=c_feature
-            else:
-                s1=c_feature
-                s2=q_feature
-            return 1-(min((s2-s1),(s1-s2+12))/self.feature_value_range.get(feature_name))
+            return 1 if q_feature==c_feature else 0
         else:
             return 1-(abs(q_feature-c_feature)/self.feature_value_range.get(feature_name))
     
@@ -188,7 +195,7 @@ class ccbr():
             print('Case Score: ', round(val2,2))
             print(f'{self.orig_df.iloc[val1, [0,1,3,4,5,6,7,8,9]].to_string()}')
         print('\n')
-        is_final=input('Do you want to select a Journey? [y/n]')
+        is_final=input('Do you want to select a Journey? [y/n]\n')
         print()
         if is_final=='y':
             return True
@@ -206,22 +213,24 @@ class ccbr():
             print(f'Final price is: {final_price}')
             print()
         else:
-            # test code
-            print(f'{self.orig_df.iloc[np.random.randint(1,1471,1)]}')
-            print(f'Final price: {price}')         
-
-    def get_standard_feature_dict(self, feature_dict):
-        for k, v in feature_dict.items():
-            feature_dict[k]=self.convert_to_ordinal(k, v)
-        return feature_dict
+            best_case_id, best_case_score=self.get_similar_cases(
+                self.user_pref, metric=self.similarity_metric, weights=self.is_weighted
+            )
+            print('Here\'s the best match:')
+            print('########################')
+            print(f'{self.orig_df.iloc[best_case_id[0], [1,3,4,5,6,7,8,9,2]].to_string()}')
+            print('########################')
+            print(f'Based on the input, the Case-adapted Price is: {round(price,2)}')   
+            print('########################')  
+            print()
+            print('Thanks for visiting Travel CBR system!')  
+            print()  
 
     def convert_to_ordinal(self, feature, nom_val):
         if feature=='Region':
             return self.util_obj.regions.get(nom_val)
         elif feature=='Hotel':
             return self.util_obj.hotels.get(nom_val)
-        elif feature=='Season':
-            return nom_val-1
         else:
             return int(nom_val)
     

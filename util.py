@@ -30,13 +30,13 @@ class Util():
         df = pd.DataFrame(travel_cb_dict.values(), columns = self.features.keys())
         df.to_csv('data/travel_cb_orig.csv', encoding='utf-8', index=False)
 
-        self.holiday_types = {k: v for v, k in enumerate(sorted(df['HolidayType'].unique()))}
-        self.regions={k: v for v, k in enumerate(sorted(df['Region'].unique()))}
-        self.transportation_modes={k: v for v, k in enumerate(sorted(df['Transportation'].unique()))}
-        self.seasons={k: v for v, k in enumerate(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November',
+        self.holiday_types = {k: v+1 for v, k in enumerate(sorted(df['HolidayType'].unique()))}
+        self.regions={k: v+1 for v, k in enumerate(sorted(df['Region'].unique()))}
+        self.transportation_modes={k: v+1 for v, k in enumerate(sorted(df['Transportation'].unique()))}
+        self.seasons={k: v+1 for v, k in enumerate(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November',
                 'December'])}
-        self.accomodations={k: v for v, k in enumerate(['HolidayFlat', 'OneStar', 'TwoStars', 'ThreeStars', 'FourStars', 'FiveStars'])}
-        self.hotels={k: v for v, k in enumerate(df['Hotel'].unique())}
+        self.accomodations={k: v+1 for v, k in enumerate(['HolidayFlat', 'OneStar', 'TwoStars', 'ThreeStars', 'FourStars', 'FiveStars'])}
+        self.hotels={k: v+1 for v, k in enumerate(df['Hotel'].unique())}
 
         travel_cb_dict_new={}
         for k,v in travel_cb_dict.items():
