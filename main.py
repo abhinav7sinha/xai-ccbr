@@ -392,6 +392,6 @@ class Util():
 
 if __name__=='__main__':
     input_file='data/travel_cb.txt'
-    travel_cbr=ccbr(input_file, is_weighted=True)
+    travel_cbr=ccbr(input_file, is_weighted=False)
     # travel_cbr.start()
     travel_cbr.start()
